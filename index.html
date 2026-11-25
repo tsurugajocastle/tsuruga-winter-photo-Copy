@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#102b49">
+<title>Tsuruga Castle Winter Photo</title>
+<style>
+:root { color-scheme: light; --navy:#102b49; --gold:#e9c77a; --cream:#fff8e8; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; background:linear-gradient(160deg,#102b49,#244d70); color:white; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+main { width:min(100%,650px); margin:auto; padding:22px 16px 32px; text-align:center; }
+h1 { margin:4px 0 2px; font-size:clamp(1.55rem,5vw,2.2rem); }
+.sub { margin:0 0 18px; color:#e5edf5; }
+.stage { position:relative; width:min(100%,560px); margin:0 auto 16px; aspect-ratio:1; overflow:hidden; border-radius:18px; background:#111; box-shadow:0 12px 36px #0006; }
+video, #preview, #frame { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+#preview { display:none; }
+#frame { pointer-events:none; object-fit:fill; }
+#datePreview { position:absolute; z-index:3; left:68.5%; top:92.0%; width:23%; color:#58331d; font-weight:750; font-size:clamp(10px,2.9vw,17px); letter-spacing:.03em; transform:translateX(-2%); pointer-events:none; }
+.controls { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:14px auto; }
+button { border:0; border-radius:999px; padding:13px 19px; min-height:46px; font-size:1rem; font-weight:700; cursor:pointer; background:var(--gold); color:#182b3c; }
+button.secondary { background:#fff; color:#17324c; }
+button:disabled { opacity:.45; cursor:not-allowed; }
+.note { color:#e3edf5; font-size:.88rem; line-height:1.5; max-width:520px; margin:12px auto; }
+#message { min-height:1.5em; color:#fff2cc; font-size:.92rem; }
+#resultActions { display:none; }
+#resultActions a { display:inline-block; padding:13px 20px; border-radius:999px; background:#fff; color:#17324c; text-decoration:none; font-weight:750; }
+.small { font-size:.78rem; color:#d2dfeb; margin-top:22px; }
+#countdown { position:absolute; inset:0; z-index:4; display:none; place-items:center; background:#06172a55; font-size:clamp(4rem,20vw,8rem); font-weight:900; text-shadow:0 4px 18px #000; }
+@media (max-width:420px) { main{padding:16px 10px 26px} .stage{border-radius:12px} button{padding:12px 16px} }
+</style>
+</head>
+<body>
+<main>
+  <h1>鶴ヶ城 冬の思い出</h1>
+  <p class="sub">Tsuruga Castle Winter Memories · 無料の記念写真</p>
+
+  <div class="stage" id="stage">
+    <video id="camera" autoplay playsinline muted></video>
+    <canvas id="preview"></canvas>
+    <img id="frame" src="winter-frame.png" alt="">
+    <div id="datePreview"></div>
+    <div id="countdown"></div>
+  </div>
+
+  <div class="controls" id="cameraControls">
+    <button id="start">カメラを起動 / Start camera</button>
+    <button id="switch" class="secondary" disabled>カメラ切替 / Flip</button>
+    <button id="capture" disabled>撮影 / Take photo</button>
+  </div>
+  <div class="controls" id="resultActions">
+    <a id="download" download="tsuruga-castle-winter-photo.png">写真を保存 / Save photo</a>
+    <button id="retake" class="secondary">撮り直す / Retake</button>
+  </div>
+  <p id="message" role="status" aria-live="polite">「カメラを起動」を押して始めてください。</p>
+  <p class="note">写真はこの端末上で合成され、サーバーには送信されません。保存するには撮影後に「写真を保存」を押してください。</p>
+  <p class="small">会津若松 · AIZU-WAKAMATSU</p>
+</main>
+
+<script>
+(() => {
+  const video = document.getElementById('camera');
+  const frame = document.getElementById('frame');
+  const canvas = document.getElementById('preview');
+  const ctx = canvas.getContext('2d');
+  const dateEl = document.getElementById('datePreview');
+  const countdownEl = document.getElementById('countdown');
+  const startBtn = document.getElementById('start');
+  const switchBtn = document.getElementById('switch');
+  const captureBtn = document.getElementById('capture');
+  const retakeBtn = document.getElementById('retake');
+  const download = document.getElementById('download');
+  const resultActions = document.getElementById('resultActions');
+  const cameraControls = document.getElementById('cameraControls');
+  const message = document.getElementById('message');
+  const SIZE = 1080;
+  let stream = null;
+  let facing = 'environment';
+  let showingResult = false;
+
+  const dateText = () => {
+    const d = new Date();
+    return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  };
+  dateEl.textContent = dateText();
+  setInterval(() => { dateEl.textContent = dateText(); }, 60000);
+
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      message.textContent = 'カメラを利用できません。HTTPSのページを開いているか確認してください。';
+      return;
+    }
+    try {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio:false,
+        video:{ facingMode:{ideal:facing}, width:{ideal:1920}, height:{ideal:1920} }
+      });
+      video.srcObject = stream;
+      await video.play();
+      video.style.display = 'block';
+      canvas.style.display = 'none';
+      frame.style.display = 'block';
+      dateEl.style.display = 'block';
+      captureBtn.disabled = false;
+      switchBtn.disabled = false;
+      startBtn.textContent = 'カメラ再起動 / Restart';
+      message.textContent = 'Akabekoの横に立って、枠の中におさまってください！';
+      showingResult = false;
+    } catch (e) {
+      message.textContent = 'カメラを起動できませんでした。ブラウザのカメラ許可を確認してください。';
+    }
+  }
+
+  function drawCover(source, targetCtx) {
+    const sw = source.videoWidth || source.width;
+    const sh = source.videoHeight || source.height;
+    const side = Math.min(sw, sh);
+    const sx = (sw-side)/2, sy = (sh-side)/2;
+    targetCtx.drawImage(source, sx, sy, side, side, 0, 0, SIZE, SIZE);
+  }
+
+  function addDate(targetCtx) {
+    // The date replaces the YYYY.MM.DD placeholder inside the illustrated plaque.
+    targetCtx.save();
+    targetCtx.textAlign = 'center';
+    targetCtx.textBaseline = 'middle';
+    // Light cream patch hides the printed YYYY.MM.DD placeholder.
+    targetCtx.fillStyle = '#fff1d7';
+    targetCtx.fillRect(770, 985, 190, 43);
+    targetCtx.fillStyle = '#58331d';
+    targetCtx.font = 'bold 34px Georgia, serif';
+    targetCtx.fillText(dateText(), 865, 1007);
+    targetCtx.restore();
+  }
+
+  async function capture() {
+    if (!stream || !video.videoWidth) return;
+    captureBtn.disabled = true;
+    for (let n=3; n>0; n--) {
+      countdownEl.style.display = 'grid';
+      countdownEl.textContent = n;
+      await new Promise(r => setTimeout(r, 700));
+    }
+    countdownEl.style.display = 'none';
+    canvas.width = SIZE; canvas.height = SIZE;
+    drawCover(video, ctx);
+    ctx.drawImage(frame, 0, 0, SIZE, SIZE);
+    addDate(ctx);
+    const data = canvas.toDataURL('image/png');
+    download.href = data;
+    const stamp = dateText().replaceAll('.','-');
+    download.download = `tsuruga-castle-${stamp}.png`;
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    frame.style.display = 'none';
+    dateEl.style.display = 'none';
+    cameraControls.style.display = 'none';
+    resultActions.style.display = 'flex';
+    message.textContent = 'できあがり！写真を保存してください。 / Your photo is ready!';
+    showingResult = true;
+  }
+
+  function retake() {
+    canvas.style.display = 'none';
+    video.style.display = 'block';
+    frame.style.display = 'block';
+    dateEl.style.display = 'block';
+    cameraControls.style.display = 'flex';
+    resultActions.style.display = 'none';
+    captureBtn.disabled = false;
+    message.textContent = 'もう一度撮影できます。 / Ready for another photo!';
+    showingResult = false;
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  switchBtn.addEventListener('click', async () => {
+    facing = facing === 'environment' ? 'user' : 'environment';
+    await startCamera();
+  });
+  captureBtn.addEventListener('click', capture);
+  retakeBtn.addEventListener('click', retake);
+  window.addEventListener('pagehide', () => { if (stream) stream.getTracks().forEach(t=>t.stop()); });
+})();
+</script>
+</body>
+</html>
