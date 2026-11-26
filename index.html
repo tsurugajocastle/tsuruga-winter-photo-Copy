@@ -16,7 +16,7 @@ h1 { margin:4px 0 2px; font-size:clamp(1.55rem,5vw,2.2rem); }
 video, #preview, #frame { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 #preview { display:none; }
 #frame { pointer-events:none; object-fit:fill; }
-#datePreview { position:absolute; z-index:3; left:68.5%; top:92.0%; width:23%; color:#58331d; font-weight:750; font-size:clamp(10px,2.9vw,17px); letter-spacing:.03em; transform:translateX(-2%); pointer-events:none; }
+#datePreview { position:absolute; z-index:3; left:71.5%; top:92.0%; width:25%; color:#58331d; font-weight:750; font-size:clamp(10px,2.9vw,17px); letter-spacing:.02em; text-align:center; transform:translate(-50%,-50%); pointer-events:none; white-space:nowrap; }
 .controls { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:14px auto; }
 button { border:0; border-radius:999px; padding:13px 19px; min-height:46px; font-size:1rem; font-weight:700; cursor:pointer; background:var(--gold); color:#182b3c; }
 button.secondary { background:#fff; color:#17324c; }
@@ -121,16 +121,13 @@ button:disabled { opacity:.45; cursor:not-allowed; }
   }
 
   function addDate(targetCtx) {
-    // The date replaces the YYYY.MM.DD placeholder inside the illustrated plaque.
+    // The plaque is blank in the frame; add today's date at its center.
     targetCtx.save();
     targetCtx.textAlign = 'center';
     targetCtx.textBaseline = 'middle';
-    // Light cream patch hides the printed YYYY.MM.DD placeholder.
-    targetCtx.fillStyle = '#fff1d7';
-    targetCtx.fillRect(770, 985, 190, 43);
     targetCtx.fillStyle = '#58331d';
-    targetCtx.font = 'bold 34px Georgia, serif';
-    targetCtx.fillText(dateText(), 865, 1007);
+    targetCtx.font = 'bold 29px Georgia, serif';
+    targetCtx.fillText(dateText(), 770, 990);
     targetCtx.restore();
   }
 
